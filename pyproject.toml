@@ -7,10 +7,13 @@ authors = [
     { name = "Houyem JOUINI", email = "houyem.jouini09@gmail.com" }
 ]
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "faker>=40.37.0",
+]
 
 [project.scripts]
-ece-bigdata-2026-fall = "ece_bigdata_2026_fall:main"
+dataset-users = "ece_bigdata_2026_fall.dataset_users:main"
+dataset-orders = "ece_bigdata_2026_fall.dataset_orders:main"
 
 [build-system]
 requires = ["uv_build>=0.12.23,<0.13.0"]
