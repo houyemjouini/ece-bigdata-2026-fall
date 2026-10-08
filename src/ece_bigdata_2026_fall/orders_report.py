@@ -4,37 +4,41 @@ import os
 import duckdb
 
 
+def orders_report(product=None):
+    con = duckdb.connect()
+    con.execute("SET TimeZone = 'UTC'")
+
+    bronze = f"s3://{os.environ['LAB_BUCKET_NAME']}/bronze"
+
+    return con.execute(
+        f"""
+        SELECT
+            strftime(date, '%Y-%m') AS month,
+            count(*) AS orders,
+            sum(quantity) AS quantity
+        FROM read_csv('{bronze}/orders.csv', strict_mode = false)
+        WHERE $product IS NULL OR product = $product
+        GROUP BY month
+        ORDER BY month
+        """,
+        {"product": product},
+    ).fetchall()
+
+
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-p", "--product", default=None)
+    parser = argparse.ArgumentParser(
+        prog="orders-report",
+        description="Monthly orders report",
+    )
+    parser.add_argument(
+        "-p",
+        "--product",
+        help="Filter the orders on a product.",
+    )
     args = parser.parse_args()
 
-    bucket = os.environ["LAB_BUCKET_NAME"]
-
-    con = duckdb.connect()
-
-    query = """
-        SELECT
-            product,
-            SUM(quantity) AS total_quantity
-        FROM read_parquet(?)
-    """
-
-    params = [f"s3://{bucket}/large/orders_large.parquet"]
-
-    if args.product:
-        query += " WHERE product = ?"
-        params.append(args.product)
-
-    query += """
-        GROUP BY product
-        ORDER BY total_quantity DESC
-    """
-
-    result = con.execute(query, params).fetchall()
-
-    for product, total_quantity in result:
-        print(f"{product}: {total_quantity:,}")
+    for month, orders, quantity in orders_report(args.product):
+        print(f"{month}\t{orders}\t{quantity}")
 
 
 if __name__ == "__main__":
